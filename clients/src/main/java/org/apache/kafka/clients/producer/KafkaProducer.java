@@ -444,7 +444,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
         // intercept the record, which can be potentially modified; this method does not throw exceptions
+        //发送数据之前 如果有拦截器先调用拦截器
         ProducerRecord<K, V> interceptedRecord = this.interceptors == null ? record : this.interceptors.onSend(record);
+        //开始发送数据
         return doSend(interceptedRecord, callback);
     }
 
@@ -456,7 +458,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         try {
             // first make sure the metadata for the topic is available
             /**
-             * 1、确认要发送到的topic的 metadata是可用的
+             * 1、确认要发送到的topic的 metadata是可用的  阻塞的
              */
             ClusterAndWaitTime clusterAndWaitTime = waitOnMetadata(record.topic(), record.partition(), maxBlockTimeMs);
             long remainingWaitMs = Math.max(0, maxBlockTimeMs - clusterAndWaitTime.waitedOnMetadataMs);
@@ -484,7 +486,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             }
 
             /**
-             * 3、获取该record的partition值 （可以直接指定 也可以根据算法计算）
+             * 3、获取该record的partition值 （可以直接指定 也可以根据算法计算）  实现Partitioner接口
              */
             int partition = partition(record, serializedKey, serializedValue, cluster);
             int serializedSize = Records.LOG_OVERHEAD + Record.recordSize(serializedKey, serializedValue);
@@ -501,7 +503,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey, serializedValue, interceptCallback, remainingWaitMs);
 
             /**
-             * 5、如果batch已经满了 唤醒sender线程发送数据
+             * 5、如果batch已经满了 （或者batch 的剩余空间不足以添加下一条 Record） 唤醒sender线程发送数据
              */
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);

@@ -14,10 +14,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="99c1a70d-8298-40b5-8f84-61e7d48dd72c" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/KafkaConsumerTest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/KafkaProducerTest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/KafkaProducer.java" beforeDir="false" afterPath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/KafkaProducer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/log4j.properties" beforeDir="false" afterPath="$PROJECT_DIR$/config/log4j.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/internals/DefaultPartitioner.java" beforeDir="false" afterPath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/internals/DefaultPartitioner.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/kafka-0.10.2.ipr" beforeDir="false" afterPath="$PROJECT_DIR$/kafka-0.10.2.ipr" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/kafka-0.10.2.iws" beforeDir="false" afterPath="$PROJECT_DIR$/kafka-0.10.2.iws" afterDir="false" />
     </list>
@@ -124,6 +122,9 @@
     <property name="jdk.selected.JAVA_MODULE" value="1.8" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_package_manager_path" value="npm" />
+    <property name="project.structure.last.edited" value="Modules" />
+    <property name="project.structure.proportion" value="0.0" />
+    <property name="project.structure.side.proportion" value="0.25316453" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -203,17 +204,6 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="ArquillianJUnit" factoryName="" nameIsGenerated="true">
-      <option name="arquillianRunConfiguration">
-        <value>
-          <option name="containerStateName" value="" />
-        </value>
-      </option>
-      <option name="TEST_OBJECT" value="class" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
     <configuration default="true" type="JUnit" factoryName="JUnit">
       <option name="TEST_OBJECT" value="class" />
       <option name="VM_PARAMETERS" />
@@ -270,7 +260,14 @@
       <workItem from="1611670005945" duration="2330000" />
       <workItem from="1611757715987" duration="5000" />
       <workItem from="1611846156662" duration="1362000" />
-      <workItem from="1612927595095" duration="2896000" />
+      <workItem from="1612927595095" duration="3295000" />
+      <workItem from="1613911796799" duration="1626000" />
+      <workItem from="1613917183111" duration="35000" />
+      <workItem from="1613918267616" duration="20000" />
+      <workItem from="1614002749843" duration="12000" />
+      <workItem from="1614002912011" duration="338000" />
+      <workItem from="1614003488996" duration="14000" />
+      <workItem from="1614004843807" duration="599000" />
     </task>
     <servers />
   </component>
@@ -310,26 +307,34 @@
       <screen x="0" y="0" width="1440" height="900" />
     </state>
     <state x="458" y="201" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1440.900@0.0.1440.900" timestamp="1611589104684" />
-    <state width="1396" height="237" key="GridCell.Tab.0.bottom" timestamp="1612929889235">
-      <screen x="0" y="25" width="1440" height="801" />
+    <state width="1396" height="237" key="GridCell.Tab.0.bottom" timestamp="1612931030407">
+      <screen x="0" y="0" width="1440" height="900" />
     </state>
-    <state width="1396" height="237" key="GridCell.Tab.0.bottom/0.0.1440.900@0.0.1440.900" timestamp="1612928732183" />
+    <state width="1396" height="237" key="GridCell.Tab.0.bottom/0.0.1440.900@0.0.1440.900" timestamp="1612931030407" />
     <state width="1396" height="237" key="GridCell.Tab.0.bottom/0.25.1440.801@0.25.1440.801" timestamp="1612929889235" />
-    <state width="1396" height="237" key="GridCell.Tab.0.center" timestamp="1612929889232">
-      <screen x="0" y="25" width="1440" height="801" />
+    <state width="1396" height="237" key="GridCell.Tab.0.center" timestamp="1612931030406">
+      <screen x="0" y="0" width="1440" height="900" />
     </state>
-    <state width="1396" height="237" key="GridCell.Tab.0.center/0.0.1440.900@0.0.1440.900" timestamp="1612928732181" />
+    <state width="1396" height="237" key="GridCell.Tab.0.center/0.0.1440.900@0.0.1440.900" timestamp="1612931030406" />
     <state width="1396" height="237" key="GridCell.Tab.0.center/0.25.1440.801@0.25.1440.801" timestamp="1612929889232" />
-    <state width="1396" height="237" key="GridCell.Tab.0.left" timestamp="1612929889230">
-      <screen x="0" y="25" width="1440" height="801" />
+    <state width="1396" height="237" key="GridCell.Tab.0.left" timestamp="1612931030405">
+      <screen x="0" y="0" width="1440" height="900" />
     </state>
-    <state width="1396" height="237" key="GridCell.Tab.0.left/0.0.1440.900@0.0.1440.900" timestamp="1612928732180" />
+    <state width="1396" height="237" key="GridCell.Tab.0.left/0.0.1440.900@0.0.1440.900" timestamp="1612931030405" />
     <state width="1396" height="237" key="GridCell.Tab.0.left/0.25.1440.801@0.25.1440.801" timestamp="1612929889230" />
-    <state width="1396" height="237" key="GridCell.Tab.0.right" timestamp="1612929889233">
-      <screen x="0" y="25" width="1440" height="801" />
+    <state width="1396" height="237" key="GridCell.Tab.0.right" timestamp="1612931030406">
+      <screen x="0" y="0" width="1440" height="900" />
     </state>
-    <state width="1396" height="237" key="GridCell.Tab.0.right/0.0.1440.900@0.0.1440.900" timestamp="1612928732182" />
+    <state width="1396" height="237" key="GridCell.Tab.0.right/0.0.1440.900@0.0.1440.900" timestamp="1612931030406" />
     <state width="1396" height="237" key="GridCell.Tab.0.right/0.25.1440.801@0.25.1440.801" timestamp="1612929889233" />
+    <state x="208" y="28" key="SettingsEditor" timestamp="1613913064137">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="208" y="28" key="SettingsEditor/0.0.1440.900@0.0.1440.900" timestamp="1613913064137" />
+    <state x="421" y="205" width="597" height="490" key="find.popup" timestamp="1613913104863">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="421" y="205" width="597" height="490" key="find.popup/0.0.1440.900@0.0.1440.900" timestamp="1613913104863" />
     <state x="126" y="59" key="new project wizard" timestamp="1612928042673">
       <screen x="0" y="0" width="1440" height="900" />
     </state>
