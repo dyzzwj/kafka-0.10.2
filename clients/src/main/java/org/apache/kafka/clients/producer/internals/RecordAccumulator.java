@@ -71,6 +71,9 @@ public final class RecordAccumulator {
     private final BufferPool free;
     private final Time time;
     private final ConcurrentMap<TopicPartition, Deque<RecordBatch>> batches;
+    /**
+     * 保存未ack的batch的集合
+     */
     private final IncompleteRecordBatches incomplete;
     // The following variables are only accessed by the sender thread, so we don't need to protect them.
     private final Set<TopicPartition> muted;
@@ -157,6 +160,11 @@ public final class RecordAccumulator {
      * @param callback The user-supplied callback to execute when the request is complete
      * @param maxTimeToBlock The maximum time in milliseconds to block for buffer memory to be available
      */
+
+    /**
+     * 向accumulator添加一条record，并返回添加后的结果
+     * （结果主要包含: future metadata、batch 是否满的标志以及新 batch 是否创建）其中， maxTimeToBlock 是 buffer.memory 的 block 的最大时间
+     */
     public RecordAppendResult append(TopicPartition tp,
                                      long timestamp,
                                      byte[] key,
@@ -168,15 +176,20 @@ public final class RecordAccumulator {
         appendsInProgress.incrementAndGet();
         try {
             // check if we have an in-progress batch
+            //每个topicPartition对应一个deque（双端队列）
             Deque<RecordBatch> dq = getOrCreateDeque(tp);
-            synchronized (dq) {
+            synchronized (dq) {//保证线程安全
                 if (closed)
                     throw new IllegalStateException("Cannot send after the producer is closed.");
                 RecordAppendResult appendResult = tryAppend(timestamp, key, value, callback, dq);
-                if (appendResult != null)
+                if (appendResult != null)//这个topicPartition对应的deque的最后一个元素不为空
                     return appendResult;
             }
 
+            /**
+             * // 为 topic-partition 创建一个新的 RecordBatch, 需要初始化相应的 RecordBatch，
+             * 要为其分配的大小是: max（batch.size, 加上头文件的本条消息的大小）
+             */
             // we don't have an in-progress record batch try to allocate a new batch
             int size = Math.max(this.batchSize, Records.LOG_OVERHEAD + Record.recordSize(key, value));
             log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, tp.topic(), tp.partition());
@@ -193,11 +206,19 @@ public final class RecordAccumulator {
                     return appendResult;
                 }
                 MemoryRecordsBuilder recordsBuilder = MemoryRecords.builder(buffer, compression, TimestampType.CREATE_TIME, this.batchSize);
+                // 给 topic-partition 创建一个 RecordBatch
                 RecordBatch batch = new RecordBatch(tp, recordsBuilder, time.milliseconds());
+                //向新的 RecordBatch 中追加数据
                 FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, callback, time.milliseconds()));
-
+                //添加元素
                 dq.addLast(batch);
+                /**
+                 * 向未 ack 的 batch 集合添加这个 batch
+                 */
                 incomplete.add(batch);
+                /**
+                 * // 如果 dp.size()>1 就证明这个 queue 有一个 batch 是可以发送了
+                 */
                 return new RecordAppendResult(future, dq.size() > 1 || batch.isFull(), true);
             }
         } finally {
@@ -210,8 +231,9 @@ public final class RecordAccumulator {
      * resources (like compression streams buffers).
      */
     private RecordAppendResult tryAppend(long timestamp, byte[] key, byte[] value, Callback callback, Deque<RecordBatch> deque) {
+        //拿到dequeu的最后一个元素
         RecordBatch last = deque.peekLast();
-        if (last != null) {
+        if (last != null) {//已有有最后一个元素 只不过最后一个元素没装满
             FutureRecordMetadata future = last.tryAppend(timestamp, key, value, callback, time.milliseconds());
             if (future == null)
                 last.close();

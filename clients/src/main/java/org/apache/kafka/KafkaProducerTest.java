@@ -13,6 +13,12 @@ public class KafkaProducerTest {
     private static int key;
     public static void main(String[] args) {
 
+
+        String path = "a/b/c/filename.txt";
+        int index = path.lastIndexOf("/");
+        System.out.println(path.substring(index + 1));
+        System.out.println(path.substring(0,index + 1));
+
         Properties props = new Properties();
         props.put("bootstrap.servers", "127.0.0.1:9092");
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");

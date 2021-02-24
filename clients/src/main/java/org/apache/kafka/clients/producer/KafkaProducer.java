@@ -492,6 +492,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             int serializedSize = Records.LOG_OVERHEAD + Record.recordSize(serializedKey, serializedValue);
            // 校验record record 的字节超出限制或大于内存限制时,就会抛出 RecordTooLargeException 异常
             ensureValidRecordSize(serializedSize);
+            //根据topic和partition创建
             tp = new TopicPartition(record.topic(), partition);
             long timestamp = record.timestamp() == null ? time.milliseconds() : record.timestamp();
             log.trace("Sending record {} with callback {} to topic {} partition {}", record, callback, record.topic(), partition);
@@ -507,6 +508,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
              */
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
+                //唤醒sender
                 this.sender.wakeup();
             }
             return result.future;
