@@ -173,16 +173,23 @@ public class NetworkClient implements KafkaClient {
      * @param now The current timestamp
      * @return True if we are ready to send to the given node
      */
+
+    /**
+     * 连接可用 返回true
+     * 连接不可用 初始化连接  返回false
+     */
     @Override
     public boolean ready(Node node, long now) {
         if (node.isEmpty())
             throw new IllegalArgumentException("Cannot connect to empty node " + node);
 
+        //连接可用 返回true
         if (isReady(node, now))
             return true;
 
         if (connectionStates.canConnect(node.idString(), now))
             // if we are interested in sending to a node and we don't have a connection to it, initiate one
+            //如果我们想给这个node发送数据 并且我们和这个node还未建立连接 就初始化连接
             initiateConnect(node, now);
 
         return false;
@@ -626,6 +633,7 @@ public class NetworkClient implements KafkaClient {
         try {
             log.debug("Initiating connection to node {} at {}:{}.", node.id(), node.host(), node.port());
             this.connectionStates.connecting(nodeConnectionId, now);
+            //建立连接
             selector.connect(nodeConnectionId,
                              new InetSocketAddress(node.host(), node.port()),
                              this.socketSendBuffer,

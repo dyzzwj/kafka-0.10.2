@@ -12,11 +12,7 @@
  */
 package org.apache.kafka.clients.producer.internals;
 
-import org.apache.kafka.clients.ClientRequest;
-import org.apache.kafka.clients.ClientResponse;
-import org.apache.kafka.clients.KafkaClient;
-import org.apache.kafka.clients.Metadata;
-import org.apache.kafka.clients.RequestCompletionHandler;
+import org.apache.kafka.clients.*;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.Node;
@@ -71,6 +67,9 @@ public class Sender implements Runnable {
     private final int maxRequestSize;
 
     /* the number of acknowledgements to request from the server */
+    /**
+     * ack机制配置
+     */
     private final short acks;
 
     /* the number of times to retry a failed request before giving up */
@@ -115,7 +114,9 @@ public class Sender implements Runnable {
     }
 
     /**
-     * The main run loop for the sender thread
+     * 当 record 写入成功后，如果发现 RecordBatch 已满足发送的条件（通常是 queue 中有多个 batch或者
+     * 新创建了RecordBatch（新创建RecordBatch可能是因为上一个RecordBatch剩余空间不足）),
+     * 那么最先添加的那些 batch 肯定是可以发送了，就会唤醒 sender 线程，发送 RecordBatch
      */
     public void run() {
         log.debug("Starting Kafka producer I/O thread.");
@@ -155,18 +156,23 @@ public class Sender implements Runnable {
         log.debug("Shutdown of Kafka producer I/O thread has completed.");
     }
 
-    /**
-     * Run a single iteration of sending
-     * 
-     * @param now
-     *            The current POSIX time in milliseconds
-     */
+
     void run(long now) {
         Cluster cluster = metadata.fetch();
         // get the list of partitions with data ready to send
+        //
+        /**
+         *  获取那些已经可以发送的RecordBatch对应的nodes
+         *  遍历batches k-tp v-queue 拿到tp对应的leader  如果leader为空 就把tp对应的topic添加到unknownLeaderTopics
+         *  否则就把leader添加到readyNodes
+         *
+         */
         RecordAccumulator.ReadyCheckResult result = this.accumulator.ready(cluster, now);
 
         // if there are any partitions whose leaders are not known yet, force metadata update
+        /**
+         * 如果有topic-partition对应的leader是未知的 就强制更新meta信息
+         */
         if (!result.unknownLeaderTopics.isEmpty()) {
             // The set of topics with unknown leader contains topics with leader election pending as well as
             // topics which may have expired. Add the topic again to metadata to ensure it is included
@@ -177,10 +183,18 @@ public class Sender implements Runnable {
         }
 
         // remove any nodes we aren't ready to send to
+        /**
+         * 如果与node没有连接  就证明该node暂时不能发送数据 暂时移除该node
+         */
         Iterator<Node> iter = result.readyNodes.iterator();
         long notReadyTimeout = Long.MAX_VALUE;
         while (iter.hasNext()) {
             Node node = iter.next();
+            //NetworkClient.ready
+            /**
+             * 连接可用 返回true
+             * 连接不可用 就初始化连接  返回false
+             */
             if (!this.client.ready(node, now)) {
                 iter.remove();
                 notReadyTimeout = Math.min(notReadyTimeout, this.client.connectionDelay(node, now));
@@ -188,18 +202,27 @@ public class Sender implements Runnable {
         }
 
         // create produce requests
+        /**
+         * 返回该node对应的所有可以发送的RecordBatch组成的batches
+         * key是node.id，并将RecordBatches从对应的queue中移除
+         *
+         * 把可以发送的RecordBatch按照node进行分组
+         * 将 batches 中 leader 为同一个 node 的所有 RecordBatch 放在一个请求中进行发送。
+         */
         Map<Integer, List<RecordBatch>> batches = this.accumulator.drain(cluster,
                                                                          result.readyNodes,
                                                                          this.maxRequestSize,
                                                                          now);
         if (guaranteeMessageOrder) {
             // Mute all the partitions drained
+            //记录将要发送的RecordBatch
             for (List<RecordBatch> batchList : batches.values()) {
                 for (RecordBatch batch : batchList)
                     this.accumulator.mutePartition(batch.topicPartition);
             }
         }
 
+        //移除由于元数据不可用而导致发送超时的RecordBatch
         List<RecordBatch> expiredBatches = this.accumulator.abortExpiredBatches(this.requestTimeout, now);
         // update sensors
         for (RecordBatch expiredBatch : expiredBatches)
@@ -216,12 +239,18 @@ public class Sender implements Runnable {
             log.trace("Nodes with data ready to send: {}", result.readyNodes);
             pollTimeout = 0;
         }
+        /**
+         * 发送RecordBatch
+         */
         sendProduceRequests(batches, now);
 
         // if some partitions are already ready to be sent, the select time would be 0;
         // otherwise if some partition already has some data accumulated but not ready yet,
         // the select time will be the time difference between now and its linger expiry time;
         // otherwise the select time will be the time difference between now and the metadata expiry time;
+        /**
+         * /关于 socket 的一些实际的读写操作（其中包括 meta 信息的更新）
+         */
         this.client.poll(pollTimeout, now);
     }
 

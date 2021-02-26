@@ -164,6 +164,11 @@ public final class RecordAccumulator {
     /**
      * 向accumulator添加一条record，并返回添加后的结果
      * （结果主要包含: future metadata、batch 是否满的标志以及新 batch 是否创建）其中， maxTimeToBlock 是 buffer.memory 的 block 的最大时间
+     *
+     * 1、从batches中获取tp对应的queue 没有则创建一个 然后向queue中追加数据
+     * 2、选择queue中最先创建的RecordBatch，
+     * 2.1 queue中没有RecordBatch或者其剩余空间不足 则创建新的RecordBatch 并向新RecordBatch追加record
+     * 2.2 queue中有RecordBatch且剩余空间充足 直接向其追加record
      */
     public RecordAppendResult append(TopicPartition tp,
                                      long timestamp,
@@ -210,14 +215,14 @@ public final class RecordAccumulator {
                 RecordBatch batch = new RecordBatch(tp, recordsBuilder, time.milliseconds());
                 //向新的 RecordBatch 中追加数据
                 FutureRecordMetadata future = Utils.notNull(batch.tryAppend(timestamp, key, value, callback, time.milliseconds()));
-                //添加元素
+                // 将 RecordBatch 添加到对应的 queue 中
                 dq.addLast(batch);
                 /**
                  * 向未 ack 的 batch 集合添加这个 batch
                  */
                 incomplete.add(batch);
                 /**
-                 * // 如果 dp.size()>1 就证明这个 queue 有一个 batch 是可以发送了
+                 * 如果 dp.size()>1 就证明这个 queue 有一个 recordBatch 是可以发送了
                  */
                 return new RecordAppendResult(future, dq.size() > 1 || batch.isFull(), true);
             }
@@ -231,13 +236,16 @@ public final class RecordAccumulator {
      * resources (like compression streams buffers).
      */
     private RecordAppendResult tryAppend(long timestamp, byte[] key, byte[] value, Callback callback, Deque<RecordBatch> deque) {
-        //拿到dequeu的最后一个元素
+        //拿到dequeu的最后（最新）一个元素
         RecordBatch last = deque.peekLast();
-        if (last != null) {//已有有最后一个元素 只不过最后一个元素没装满
+        if (last != null) {//有最新的元素
             FutureRecordMetadata future = last.tryAppend(timestamp, key, value, callback, time.milliseconds());
-            if (future == null)
+            if (future == null) //最新的RecordBatch剩余空间不足
                 last.close();
             else
+            /**
+             * 如果 dp.size()>1 就证明这个 queue 有一个 recordBatch 是可以发送了
+             */
                 return new RecordAppendResult(future, deque.size() > 1 || last.isFull(), false);
         }
         return null;
@@ -327,6 +335,11 @@ public final class RecordAccumulator {
      * </ul>
      * </ol>
      */
+    /**
+     * 遍历batches k-tp v-queue 拿到tp对应的leader  如果leader为空 就把tp对应的topic添加到unknownLeaderTopics
+     * 否则就把leader添加到readyNodes
+
+     */
     public ReadyCheckResult ready(Cluster cluster, long nowMs) {
         Set<Node> readyNodes = new HashSet<>();
         long nextReadyCheckDelayMs = Long.MAX_VALUE;
@@ -339,11 +352,13 @@ public final class RecordAccumulator {
 
             Node leader = cluster.leaderFor(part);
             synchronized (deque) {
+                //如果该tp没有对应的leader信息   就加入到unknownLeaderTopics
                 if (leader == null && !deque.isEmpty()) {
                     // This is a partition for which leader is not known, but messages are available to send.
                     // Note that entries are currently not removed from batches when deque is empty.
                     unknownLeaderTopics.add(part.topic());
                 } else if (!readyNodes.contains(leader) && !muted.contains(part)) {
+                    //拿queue的第一个元素 即最老的
                     RecordBatch batch = deque.peekFirst();
                     if (batch != null) {
                         boolean backingOff = batch.attempts > 0 && batch.lastAttemptMs + retryBackoffMs > nowMs;
@@ -401,8 +416,15 @@ public final class RecordAccumulator {
             return Collections.emptyMap();
 
         Map<Integer, List<RecordBatch>> batches = new HashMap<>();
+        //遍历nodes
+        /**
+         * 把可以发送的RecordBatch按照node进行分组
+         * key是node.id value是发送到该node上的REcordBatch集合
+         * 将 batches 中 leader 为同一个 node 的所有 RecordBatch 放在一个请求中进行发送。
+         */
         for (Node node : nodes) {
             int size = 0;
+            //根据node.id获取该node节点上的所有partition信息
             List<PartitionInfo> parts = cluster.partitionsForNode(node.id());
             List<RecordBatch> ready = new ArrayList<>();
             /* to make starvation less likely this loop doesn't start at 0 */
@@ -452,9 +474,11 @@ public final class RecordAccumulator {
      * Get the deque for the given topic-partition, creating it if necessary.
      */
     private Deque<RecordBatch> getOrCreateDeque(TopicPartition tp) {
+        //从batches中获取tp对应的queue
         Deque<RecordBatch> d = this.batches.get(tp);
         if (d != null)
             return d;
+        //没有就创建一个
         d = new ArrayDeque<>();
         Deque<RecordBatch> previous = this.batches.putIfAbsent(tp, d);
         if (previous == null)

@@ -500,6 +500,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             Callback interceptCallback = this.interceptors == null ? callback : new InterceptorCallback<>(callback, this.interceptors, tp);
             /**
              * 4、向accumulator中追加数据
+             * 每个 TopicPartition 都会对应一个 Deque<RecordBatch>
+             *     当添加数据时，会向其 topic-partition 对应的这个 queue 最新创建的一个 RecordBatch 中添加 record，
+             *     而发送数据时，则会先从 queue 中最老的那个 RecordBatch 开始发送。
              */
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey, serializedValue, interceptCallback, remainingWaitMs);
 

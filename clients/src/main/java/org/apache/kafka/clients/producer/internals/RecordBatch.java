@@ -69,6 +69,9 @@ public final class RecordBatch {
      * @return The RecordSend corresponding to this record or null if there isn't sufficient room.
      */
     public FutureRecordMetadata tryAppend(long timestamp, byte[] key, byte[] value, Callback callback, long now) {
+        /**
+         * 如果recordBatch的剩余空间不足
+         */
         if (!recordsBuilder.hasRoomFor(key, value)) {
             return null;
         } else {
