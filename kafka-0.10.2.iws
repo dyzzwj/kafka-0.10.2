@@ -14,9 +14,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="99c1a70d-8298-40b5-8f84-61e7d48dd72c" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/KafkaProducer.java" beforeDir="false" afterPath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/KafkaProducer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/internals/DefaultPartitioner.java" beforeDir="false" afterPath="$PROJECT_DIR$/clients/src/main/java/org/apache/kafka/clients/producer/internals/DefaultPartitioner.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/kafka-0.10.2.ipr" beforeDir="false" afterPath="$PROJECT_DIR$/kafka-0.10.2.ipr" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/kafka-0.10.2.iws" beforeDir="false" afterPath="$PROJECT_DIR$/kafka-0.10.2.iws" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -267,7 +264,7 @@
       <workItem from="1614002749843" duration="12000" />
       <workItem from="1614002912011" duration="338000" />
       <workItem from="1614003488996" duration="14000" />
-      <workItem from="1614004843807" duration="599000" />
+      <workItem from="1614004843807" duration="1847000" />
     </task>
     <servers />
   </component>
