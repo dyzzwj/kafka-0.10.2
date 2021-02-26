@@ -158,6 +158,9 @@ public class Sender implements Runnable {
 
 
     void run(long now) {
+        /**
+         * 获取kafka集群元数据
+         */
         Cluster cluster = metadata.fetch();
         // get the list of partitions with data ready to send
         //

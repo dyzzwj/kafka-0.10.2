@@ -136,14 +136,35 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private static final String JMX_PREFIX = "kafka.producer";
 
     private String clientId;
+    /**
+     * 分区选择器 根据策略 将消息路由到合适的分区
+     */
     private final Partitioner partitioner;
+    /**
+     * 消息的最大长度
+      */
     private final int maxRequestSize;
+    /**
+     * 发送单个消息的缓冲区大小
+     */
     private final long totalMemorySize;
+    /**
+     * kafka集群元数据
+     */
     private final Metadata metadata;
+    /**
+     *  收集并缓存消息 等待sender线程发送
+     */
     private final RecordAccumulator accumulator;
+    /**
+     * 发送消息的线程
+     */
     private final Sender sender;
     private final Metrics metrics;
     private final Thread ioThread;
+    /**
+     * 压缩方式
+     */
     private final CompressionType compressionType;
     private final Sensor errors;
     private final Time time;
@@ -151,7 +172,14 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private final Serializer<V> valueSerializer;
     private final ProducerConfig producerConfig;
     private final long maxBlockTimeMs;
+    /**
+     * 消息的超时时间 从消息发送到收到ack响应的最长时长
+     */
     private final int requestTimeoutMs;
+
+    /**
+     * 在消息发送之前进行拦截  或先于用户的callback对ack进行预处理
+     */
     private final ProducerInterceptors<K, V> interceptors;
 
     /**
@@ -251,6 +279,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             this.interceptors = interceptorList.isEmpty() ? null : new ProducerInterceptors<>(interceptorList);
 
             ClusterResourceListeners clusterResourceListeners = configureClusterResourceListeners(keySerializer, valueSerializer, interceptorList, reporters);
+            /**
+             * 创建并更新kafka集群的元数据
+             */
             this.metadata = new Metadata(retryBackoffMs, config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG), true, clusterResourceListeners);
             this.maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG);
             this.totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG);
@@ -292,6 +323,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.requestTimeoutMs = config.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG);
             }
 
+            /**
+             * batch.size指定的是单个RecordBatch的大小
+             */
             this.accumulator = new RecordAccumulator(config.getInt(ProducerConfig.BATCH_SIZE_CONFIG),
                     this.totalMemorySize,
                     this.compressionType,
@@ -303,6 +337,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
             this.metadata.update(Cluster.bootstrap(addresses), Collections.<String>emptySet(), time.milliseconds());
             ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config.values());
+
             NetworkClient client = new NetworkClient(
                     new Selector(config.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG), this.metrics, time, "producer", channelBuilder),
                     this.metadata,
@@ -314,6 +349,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                     this.requestTimeoutMs,
                     time,
                     true);
+            /**
+             * 创建sender对应的线程
+             */
             this.sender = new Sender(client,
                     this.metadata,
                     this.accumulator,
@@ -435,11 +473,9 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      *
      */
     /**
+     *   sned()方法 实际上是将消息放入RecordAccumulator缓存
      *  发送数据之前 如果有拦截器先调用拦截器
      * 向topic异步的发送数据 当发送确认后唤起回调函数
-     * @param record
-     * @param callback
-     * @return
      */
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {

@@ -54,6 +54,9 @@ public class ProducerInterceptors<K, V> implements Closeable {
      * @param record the record from client
      * @return producer record to send to topic/partition
      */
+    /**
+     * 消息发送之前之前执行
+     */
     public ProducerRecord<K, V> onSend(ProducerRecord<K, V> record) {
         ProducerRecord<K, V> interceptRecord = record;
         for (ProducerInterceptor<K, V> interceptor : this.interceptors) {
@@ -81,6 +84,10 @@ public class ProducerInterceptors<K, V> implements Closeable {
      * @param metadata The metadata for the record that was sent (i.e. the partition and offset).
      *                 If an error occurred, metadata will only contain valid topic and maybe partition.
      * @param exception The exception thrown during processing of this record. Null if no error occurred.
+     */
+
+    /**
+     * 先于用户的ack，对ack响应进行预处理
      */
     public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
         for (ProducerInterceptor<K, V> interceptor : this.interceptors) {

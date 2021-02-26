@@ -30,13 +30,33 @@ import java.util.Set;
 public final class Cluster {
 
     private final boolean isBootstrapConfigured;
+    /**
+     * kafka集群中节点信息列表
+     */
     private final List<Node> nodes;
     private final Set<String> unauthorizedTopics;
     private final Set<String> internalTopics;
+    /**
+     * 记录了TopicPartition与PartitionInfo的映射关系
+     */
     private final Map<TopicPartition, PartitionInfo> partitionsByTopicPartition;
+    /**
+     * 记录了topic名称和PartitionInfo的关系
+     */
     private final Map<String, List<PartitionInfo>> partitionsByTopic;
+    /**
+     * 记录了topic名称和PartitionInfo的关系  这里的List<PartitionInfo>必须存放的分区必须是有Leader副本的Partition
+     *  而partitionsByTopic中记录的分区则不一定有Leader副本 因为某些中间状态 某些分区不一定有leader副本
+     */
     private final Map<String, List<PartitionInfo>> availablePartitionsByTopic;
+
+    /**
+     * 记录了Node与PartitionInfo的映射关系 可以根据节点id查询其上分布的全部分区的详细信息
+     */
     private final Map<Integer, List<PartitionInfo>> partitionsByNode;
+    /**
+     * brokerId与Node之间对应关系 方便按照brokerId进行索引
+     */
     private final Map<Integer, Node> nodesById;
     private final ClusterResource clusterResource;
 

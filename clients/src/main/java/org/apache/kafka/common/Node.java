@@ -12,8 +12,9 @@
  */
 package org.apache.kafka.common;
 
+
 /**
- * Information about a Kafka node
+ * kafka集群的一个节点
  */
 public class Node {
 
