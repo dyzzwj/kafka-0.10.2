@@ -37,6 +37,9 @@ public final class RecordBatch {
     private static final Logger log = LoggerFactory.getLogger(RecordBatch.class);
 
     final long createdMs;
+    /**
+     * 当前RecordBatch中的数据都会发送给当前tp
+     */
     final TopicPartition topicPartition;
     final ProduceRequestResult produceFuture;
 
@@ -44,8 +47,13 @@ public final class RecordBatch {
     private final MemoryRecordsBuilder recordsBuilder;
 
     volatile int attempts;
+    /**
+     * 保存的record个数
+     */
     int recordCount;
+    //最大record的字节数
     int maxRecordSize;
+
     long drainedMs;
     long lastAttemptMs;
     long lastAppendTime;

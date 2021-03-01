@@ -206,6 +206,9 @@ public class Sender implements Runnable {
 
         // create produce requests
         /**
+         *
+         *  映射转换 tp => RecordBatch集合 转换为 node.id => RecordBatch集合
+         *
          * 返回该node对应的所有可以发送的RecordBatch组成的batches
          * key是node.id，并将RecordBatches从对应的queue中移除
          *

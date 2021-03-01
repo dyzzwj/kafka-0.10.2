@@ -38,6 +38,9 @@ public final class Cluster {
     private final Set<String> internalTopics;
     /**
      * 记录了TopicPartition与PartitionInfo的映射关系
+     *  一个 TopicPartition 对应 一个 PartitionInfo
+     *  topic名称 + 分区编号  => 分区信息
+     *
      */
     private final Map<TopicPartition, PartitionInfo> partitionsByTopicPartition;
     /**

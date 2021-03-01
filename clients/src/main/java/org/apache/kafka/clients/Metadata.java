@@ -43,6 +43,11 @@ import java.util.Set;
  * is removed from the metadata refresh set after an update. Consumers disable topic expiry since they explicitly
  * manage topics while producers rely on topic expiry to limit the refresh set.
  */
+
+
+/**
+ * Meatdata中的字段可以由主线程读 Sender线程更新 因此本类大多数方法由synchorized修饰
+ */
 public final class Metadata {
 
     private static final Logger log = LoggerFactory.getLogger(Metadata.class);
@@ -64,17 +69,33 @@ public final class Metadata {
      * kafka集群元数据每更新成功一次 version字段值 +1 通过新旧版本号的比较 判断集群元数据是否更新完成
      */
     private int version;
+    /**
+     * 记录上一次更新元数据的时间戳
+     */
     private long lastRefreshMs;
+
+    /**
+     * 记录上一次成功更新元数据的时间戳
+     */
     private long lastSuccessfulRefreshMs;
     private Cluster cluster;
+    /**
+     * 是否强制更新cluster
+     */
     private boolean needUpdate;
     /* Topics with expiry time */
     /**
      * 记录了当前已知的所有topic
      */
     private final Map<String, Long> topics;
+    /**
+     * 监听meatdata更新的额监听器集合
+     */
     private final List<Listener> listeners;
     private final ClusterResourceListeners clusterResourceListeners;
+    /**
+     * 是否需要更新全部topic的元数据
+     */
     private boolean needMetadataForAllTopics;
     private final boolean topicExpiryEnabled;
 

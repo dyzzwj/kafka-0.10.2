@@ -57,6 +57,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The accumulator uses a bounded amount of memory and append calls will block when that memory is exhausted, unless
  * this behavior is explicitly disabled.
  */
+
+
+/**
+ *  RecordAccumulator 用于缓存消息  由主线程添加数据   sender线程发送数据 因此必须保证线程安全
+ */
 public final class RecordAccumulator {
 
     private static final Logger log = LoggerFactory.getLogger(RecordAccumulator.class);
@@ -70,6 +75,10 @@ public final class RecordAccumulator {
     private final long retryBackoffMs;
     private final BufferPool free;
     private final Time time;
+
+    /**
+     * tp和RecordBatch的映射
+     */
     private final ConcurrentMap<TopicPartition, Deque<RecordBatch>> batches;
     /**
      * 保存未ack的batch的集合
@@ -77,6 +86,8 @@ public final class RecordAccumulator {
     private final IncompleteRecordBatches incomplete;
     // The following variables are only accessed by the sender thread, so we don't need to protect them.
     private final Set<TopicPartition> muted;
+
+    //使用drain方法从批量导出RecordBatch时，为了防止饥饿，使用drainIndex记录上次发送停止的位置 下次继续从此位置开始发送
     private int drainIndex;
 
     /**
@@ -203,7 +214,9 @@ public final class RecordAccumulator {
                 // Need to check if producer is closed again after grabbing the dequeue lock.
                 if (closed)
                     throw new IllegalStateException("Cannot send after the producer is closed.");
-
+                /**
+                 * 重试 防止多个线程并发申请空间 造成重复申请
+                 */
                 RecordAppendResult appendResult = tryAppend(timestamp, key, value, callback, dq);
                 if (appendResult != null) {
                     // Somebody else found us a batch, return the one we waited for! Hopefully this doesn't happen often...
@@ -344,7 +357,7 @@ public final class RecordAccumulator {
         Set<Node> readyNodes = new HashSet<>();
         long nextReadyCheckDelayMs = Long.MAX_VALUE;
         Set<String> unknownLeaderTopics = new HashSet<>();
-
+//        是否有其他线程在等BufferPool释放空间
         boolean exhausted = this.free.queued() > 0;
         for (Map.Entry<TopicPartition, Deque<RecordBatch>> entry : this.batches.entrySet()) {
             TopicPartition part = entry.getKey();
@@ -366,8 +379,12 @@ public final class RecordAccumulator {
                         long timeToWaitMs = backingOff ? retryBackoffMs : lingerMs;
                         long timeLeftMs = Math.max(timeToWaitMs - waitedTimeMs, 0);
                         boolean full = deque.size() > 1 || batch.isFull();
+
+                        //是否超时
                         boolean expired = waitedTimeMs >= timeToWaitMs;
-                        boolean sendable = full || expired || exhausted || closed || flushInProgress();
+                        boolean sendable = full || expired || exhausted || //是否有其他线程在等BufferPool释放空间
+                                closed || //sender线程准备关闭
+                                flushInProgress(); //是否有线程正在等待flush操作
                         if (sendable && !backingOff) {
                             readyNodes.add(leader);
                         } else {
@@ -427,7 +444,10 @@ public final class RecordAccumulator {
             //根据node.id获取该node节点上的所有partition信息
             List<PartitionInfo> parts = cluster.partitionsForNode(node.id());
             List<RecordBatch> ready = new ArrayList<>();
-            /* to make starvation less likely this loop doesn't start at 0 */
+            /**
+             * drainIndex 是 batches的下标 使用drainIndex记录上次发送停止的位置 下次继续从此位置开始发送
+             * 若一直从索引为0的队列开始发送 可能会出现一直只发送前几个分区的消息的情况 造成其他分区饥饿
+             */
             int start = drainIndex = drainIndex % parts.size();
             do {
                 PartitionInfo part = parts.get(drainIndex);

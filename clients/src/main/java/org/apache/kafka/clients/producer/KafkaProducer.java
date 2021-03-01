@@ -596,6 +596,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     private ClusterAndWaitTime waitOnMetadata(String topic, Integer partition, long maxWaitMs) throws InterruptedException {
         // add topic to metadata topic list if it is not there already and reset expiry
         metadata.add(topic);
+        //获取分区的详细信息
         Cluster cluster = metadata.fetch();
         Integer partitionsCount = cluster.partitionCountForTopic(topic);
         // Return cached metadata if we have it, and if the record's partition is either undefined
@@ -612,9 +613,12 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         // is stale and the number of partitions for this topic has increased in the meantime.
         do {
             log.trace("Requesting metadata update for topic {}.", topic);
+            //设置needUpdate为true  sender根据此状态判断是否更新metadata
             int version = metadata.requestUpdate();
+            //唤醒sender线程
             sender.wakeup();
             try {
+                //阻塞等待元数据更新完毕
                 metadata.awaitUpdate(version, remainingWaitMs);
             } catch (TimeoutException ex) {
                 // Rethrow with original maxWaitMs to prevent logging exception with remainingWaitMs
@@ -622,7 +626,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             }
             cluster = metadata.fetch();
             elapsed = time.milliseconds() - begin;
-            if (elapsed >= maxWaitMs)
+            if (elapsed >= maxWaitMs) //检测超时时间
                 throw new TimeoutException("Failed to update metadata after " + maxWaitMs + " ms.");
             if (cluster.unauthorizedTopics().contains(topic))
                 throw new TopicAuthorizationException(topic);
